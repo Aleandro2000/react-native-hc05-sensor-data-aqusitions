@@ -4,6 +4,7 @@ import { BleManager, Device, Characteristic } from "react-native-ble-plx";
 import { SensorDataType } from "../types/sensor-data.type";
 import StatisticsComponent from "../components/statistics.component";
 import TableComponent from "../components/table.component";
+import useSensorDataStore from "../stores/sensor-data.store";
 
 const SERVICE_UUID = "your-service-uuid";
 const CHARACTERISTIC_UUID = "your-characteristic-uuid";
@@ -12,7 +13,7 @@ const DEVICE_NAME = "YourArduinoName";
 const manager = new BleManager();
 
 export default function DashboardScreen() {
-    const [data, setData] = useState<SensorDataType[]>([]);
+    const { sensorData, setSensorData } = useSensorDataStore();
     const [connected, setConnected] = useState(false);
 
     const requestPermissions = async () => {
@@ -55,13 +56,13 @@ export default function DashboardScreen() {
             (_, characteristic: Characteristic | null) => {
                 if (characteristic?.value) {
                     const decoded = JSON.parse(atob(characteristic.value));
-                    setData((prev) => {
-                        if (prev.length > 20) {
-                            prev.pop();
-                            return [decoded, ...prev].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0);
-                        }
-                        return [decoded, ...prev].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0);
-                    });
+                    if (sensorData.length > 20) {
+                        sensorData.pop();
+                        setSensorData([decoded, ...sensorData].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0));
+                        return;
+                    }
+
+                    setSensorData([decoded, ...sensorData].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0));
                 }
             }
         );
@@ -71,8 +72,8 @@ export default function DashboardScreen() {
         <View style={{ flex: 1, padding: 16, backgroundColor: "white", justifyContent: "center", alignItems: "center" }}>
             {!connected ? <ActivityIndicator size="large" color="black" /> : (
                 <ScrollView>
-                    <StatisticsComponent data={data} />
-                    <TableComponent data={data} />
+                    <StatisticsComponent data={sensorData} />
+                    <TableComponent data={sensorData} />
                 </ScrollView>
             )}
         </View>
