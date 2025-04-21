@@ -5,4 +5,5 @@ export type SensorDataType = {
     dewPoint: number;
     absHumidity: number;
     timestamp: number;
+    status: string;
 };

@@ -80,6 +80,7 @@ void loop()
                 ",\"heatIndex\":" + String(heatIndex, 2) +
                 ",\"dewPoint\":" + String(dewPoint, 2) +
                 ",\"absHumidity\":" + String(absHumidity, 2) +
+                ",\"status\":\"" + (temp >= 24.0 || hum >= 56.0 ? "ALERT" : "NORMAL") +
                 ",\"timestamp\":" + String(timestamp) + "}";
 
   // Send data on Bluethoot

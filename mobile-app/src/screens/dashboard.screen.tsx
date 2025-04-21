@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { Platform, PermissionsAndroid, View, Text, ScrollView, ActivityIndicator } from "react-native";
-import { BleManager, Device, Characteristic } from "react-native-ble-plx";
+import { Platform, PermissionsAndroid, View, ScrollView, ActivityIndicator, Button, Text } from "react-native";
+import { BleManager, type Device } from "react-native-ble-plx";
 import { SensorDataType } from "../types/sensor-data.type";
 import StatisticsComponent from "../components/statistics.component";
 import TableComponent from "../components/table.component";
 import useSensorDataStore from "../stores/sensor-data.store";
-
-const SERVICE_UUID = "your-service-uuid";
-const CHARACTERISTIC_UUID = "your-characteristic-uuid";
-const DEVICE_NAME = "YourArduinoName";
+import { useNavigation } from "@react-navigation/native";
+import Config from "react-native-config";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { RootStackParamList } from "../types/navigation.type";
 
 const manager = new BleManager();
 
 export default function DashboardScreen() {
     const { sensorData, setSensorData } = useSensorDataStore();
     const [connected, setConnected] = useState(false);
+    const navigation = useNavigation<StackNavigationProp<RootStackParamList, "Dashboard">>();
 
     const requestPermissions = async () => {
         if (Platform.OS === "android") {
@@ -34,35 +35,44 @@ export default function DashboardScreen() {
                 subscription.remove();
             }
         }, true);
+
         return () => manager.destroy();
     }, []);
 
     const scanAndConnect = () => {
         manager.startDeviceScan(null, null, async (_, device) => {
-            if (device?.name === DEVICE_NAME) {
+            if (device?.name === Config.DEVICE_NAME) {
                 manager.stopDeviceScan();
-                const connectedDevice = await device.connect();
-                await connectedDevice.discoverAllServicesAndCharacteristics();
-                setConnected(true);
-                listenToCharacteristic(connectedDevice);
+                try {
+                    const connectedDevice = await device?.connect();
+                    await connectedDevice?.discoverAllServicesAndCharacteristics();
+                    setConnected(true);
+                    listenToDeviceData(connectedDevice as Device);
+                } catch (error) {
+                    console.error("Connection failed:", error);
+                }
             }
         });
     };
 
-    const listenToCharacteristic = (device: Device) => {
+    const listenToDeviceData = (device: Device) => {
         device.monitorCharacteristicForService(
-            SERVICE_UUID,
-            CHARACTERISTIC_UUID,
-            (_, characteristic: Characteristic | null) => {
+            "",
+            "",
+            (_, characteristic) => {
                 if (characteristic?.value) {
-                    const decoded = JSON.parse(atob(characteristic.value));
-                    if (sensorData.length > 20) {
-                        sensorData.pop();
-                        setSensorData([decoded, ...sensorData].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0));
-                        return;
-                    }
+                    try {
+                        const decoded = JSON.parse(atob(characteristic.value));
+                        if (sensorData.length > 20) {
+                            sensorData.pop();
+                            setSensorData([decoded, ...sensorData].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0));
+                            return;
+                        }
 
-                    setSensorData([decoded, ...sensorData].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0));
+                        setSensorData([decoded, ...sensorData].sort((a: SensorDataType, b: SensorDataType) => a.timestamp < b.timestamp ? 1 : 0));
+                    } catch (e) {
+                        console.error("Data decode error:", e);
+                    }
                 }
             }
         );
@@ -72,6 +82,7 @@ export default function DashboardScreen() {
         <View style={{ flex: 1, padding: 16, backgroundColor: "white", justifyContent: "center", alignItems: "center" }}>
             {!connected ? <ActivityIndicator size="large" color="black" /> : (
                 <ScrollView>
+                    <Button color="black" title="Notification" onPress={() => { navigation.navigate("Notification"); }} />
                     <StatisticsComponent data={sensorData} />
                     <TableComponent data={sensorData} />
                 </ScrollView>
