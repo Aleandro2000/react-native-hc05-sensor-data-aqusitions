@@ -9,8 +9,8 @@
     "test": "jest",
     "lint": "eslint .",
     "bundle": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle",
-    "release-apk": "npm run bundle && cd android && gradlew clean && gradlew assembleRelease",
-    "release-bundle": "npm run bundle && cd android && gradlew clean && gradlew bundleRelease"
+    "release-apk": "npm run bundle && cd android && ./gradlew clean && ./gradlew assembleRelease",
+    "release-bundle": "npm run bundle && cd android && ./gradlew clean && ./gradlew bundleRelease"
   },
   "dependencies": {
     "@react-native-masked-view/masked-view": "^0.3.2",
