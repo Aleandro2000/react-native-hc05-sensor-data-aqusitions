@@ -51,8 +51,6 @@ export default function DashboardScreen() {
     };
 
     useEffect(() => {
-        let isMounted = true;
-
         const init = async () => {
             await requestPermissions();
             scanDevices();
@@ -61,7 +59,6 @@ export default function DashboardScreen() {
         init();
 
         return () => {
-            isMounted = false;
             bleManager?.destroy();
             notificationSub?.remove();
         };
@@ -108,45 +105,44 @@ export default function DashboardScreen() {
 
             for (const service of services) {
                 const characteristics = await service.characteristics();
+                const notifiableChar = characteristics.find((char) => char.isNotifiable);
 
-                for (const char of characteristics) {
-                    if (char.isNotifiable) {
-                        let lastUpdateTime = Date.now();
+                if (notifiableChar !== undefined) {
+                    let lastUpdateTime = Date.now();
 
-                        const sub = char.monitor((error, characteristic) => {
-                            if (error) {
-                                console.error("Notification error:", error);
-                                return;
-                            }
+                    const sub = notifiableChar.monitor((error, characteristic) => {
+                        if (error) {
+                            console.error("Notification error:", error);
+                            return;
+                        }
 
-                            try {
-                                const base64Value = characteristic?.value;
+                        try {
+                            const base64Value = characteristic?.value;
 
-                                if (base64Value) {
-                                    const buffer = Buffer.from(base64Value, "base64");
-                                    const decodedStr = buffer.toString("utf8");
-                                    const parsed = JSON.parse(decodedStr);
+                            if (base64Value) {
+                                const buffer = Buffer.from(base64Value, "base64");
+                                const decodedStr = buffer.toString("utf8");
+                                const parsed = JSON.parse(decodedStr);
 
-                                    if (Date.now() - lastUpdateTime > 500) {
-                                        lastUpdateTime = Date.now();
+                                if (Date.now() - lastUpdateTime > 500) {
+                                    lastUpdateTime = Date.now();
 
-                                        const updated = [parsed, ...sensorData].sort((a, b) =>
-                                            a.timestamp < b.timestamp ? 1 : -1
-                                        );
+                                    const updated = [parsed, ...sensorData].sort((a, b) =>
+                                        a.timestamp < b.timestamp ? 1 : -1
+                                    );
 
-                                        if (updated.length > 20) updated.pop();
-                                        setSensorData(updated);
-                                    }
+                                    if (updated.length > 20) updated.pop();
+                                    setSensorData(updated);
                                 }
-                            } catch (e) {
-                                console.error("Data parse error:", e);
                             }
-                        });
+                        } catch (e) {
+                            console.error("Data parse error:", e);
+                        }
+                    });
 
-                        setNotificationSub(sub);
-                        setConnected(true);
-                        return;
-                    }
+                    setNotificationSub(sub);
+                    setConnected(true);
+                    return;
                 }
             }
 
